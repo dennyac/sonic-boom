@@ -23,8 +23,8 @@ bass_settings = {
   delayed_release: { attack: 0, sustain: 0.3, release: 0.2, amp: 0.6 }
 }
 
-flute_settings = { attack: 0.05, sustain: 0.3, release: 0.15, amp: 0.5 }
-guitar_settings = { amp: 0.3, attack:  0.007,   sustain: 0.3, release: 1 }
+flute_settings = { attack: 0.05, sustain: 0.5, release: 0.2, amp: 0.5 }
+guitar_settings = { amp: 0.3, attack:  0.007,   sustain: 0.5, release: 1 }
 
 default_sleep_time = 1.0
 
@@ -34,7 +34,7 @@ end
 
 define :intro do
   6.times do
-    play [:Ab2, :Ab3, :c4, :d4], keyboard_settings[:regular]
+    play [:Ab2, :Ab3, :C4, :D4], keyboard_settings[:regular]
     sleep default_sleep_time
   end
   play [:Ab2, :Ab3, :C4, :DS4], keyboard_settings[:regular]
@@ -42,7 +42,6 @@ define :intro do
   play [:Ab2, :Ab3, :B3, :F4], keyboard_settings[:regular]
   sleep default_sleep_time
 end
-
 
 define :verse do
   cue :start_bass_and_drums
@@ -53,17 +52,17 @@ define :verse do
       sleep default_sleep_time
     end
     3.times do
-      play [:f3, :a3, :d4], keyboard_settings[:regular]
+      play [:F3, :A3, :D4], keyboard_settings[:regular]
       sleep default_sleep_time
     end
-    play [:f3, :a3, :c4], keyboard_settings[:regular]
+    play [:F3, :A3, :C4], keyboard_settings[:regular]
     sleep default_sleep_time
     4.times do
       play [:G3, :AS3, :D4], keyboard_settings[:regular]
       sleep default_sleep_time
     end
     2.times do
-      play [:f3, :a3, :d4], keyboard_settings[:regular]
+      play [:F3, :A3, :D4], keyboard_settings[:regular]
       sleep default_sleep_time
     end
     play [:GS3, :C4, :DS4], keyboard_settings[:regular]
@@ -80,10 +79,10 @@ define :verse_end do
       sleep default_sleep_time
     end
     3.times do
-      play [:f3, :a3, :d4], keyboard_settings[:regular]
+      play [:F3, :A3, :D4], keyboard_settings[:regular]
       sleep default_sleep_time
     end
-    play [:f3, :a3, :c4], keyboard_settings[:regular]
+    play [:F3, :A3, :C4], keyboard_settings[:regular]
     sleep default_sleep_time
     4.times do
       play [:GS3, :C4, :DS4], keyboard_settings[:regular]
@@ -151,7 +150,7 @@ define :bridge do
   end
 end
 
-define :drums do
+define :drums_verse do
   11.times do
     sample :drum_bass_soft, drum_settings[:bass]
     sample :drum_cymbal_closed, drum_settings[:cymbol]
@@ -196,6 +195,9 @@ define :drums do
     sample :drum_cymbal_closed, drum_settings[:cymbol]
     sleep default_sleep_time/2
   end
+end
+
+define :drums_bridge do
   sample :drum_bass_soft, drum_settings[:bass]
   sample :drum_cymbal_closed, drum_settings[:cymbol]
   sleep default_sleep_time/2
@@ -685,7 +687,7 @@ define :lead_bridge do |octave = 4, opts = {}|
   control note, note: get_note_symbol("G", octave + 1)
   sleep default_sleep_time * 25/8
   play get_note_symbol("F", octave + 1), opts
-  sleep default_sleep_time/4   # 0.5 -> 0.25
+  sleep default_sleep_time/4
   play get_note_symbol("D", octave + 1), opts
   sleep default_sleep_time/4
   play get_note_symbol("DS", octave + 1), opts
@@ -714,27 +716,7 @@ define :lead_bridge do |octave = 4, opts = {}|
   sleep default_sleep_time * 7
 end
 
-define :bass do
-  use_synth :fm
-  bass_begin
-  bass_mid
-  bass_bridge
-end
-
-define :lead do  |octave = 4, opts = {}, synth = :beep|
-  use_synth synth
-  sleep default_sleep_time * 3/2
-  lead_first octave, opts
-  sleep default_sleep_time * 3/2
-  lead_mid octave, opts
-  sleep default_sleep_time * 3/2
-  lead_first octave, opts
-  sleep default_sleep_time * 3/2
-  lead_last octave, opts
-  lead_bridge octave, opts
-end
-
-in_thread(name: :keyboard) do
+define :keyboard do
   use_synth :beep
   intro
   2.times do
@@ -744,25 +726,51 @@ in_thread(name: :keyboard) do
     intro
   end
 end
-in_thread(name: :drums) do
+
+define :bass do
+  use_synth :fm
   sync :start_bass_and_drums
   2.times do
-    drums
+    bass_begin
+    bass_mid
+    bass_bridge
   end
+end
+
+define :drums do
+  sync :start_bass_and_drums
+  2.times do
+    drums_verse
+    drums_bridge
+  end
+end
+
+define :lead do  |octave = 4, opts = {}, synth = :beep|
+  use_synth synth
+  2.times do
+    sync :start_lead
+    sleep default_sleep_time * 3/2
+    lead_first octave, opts
+    sleep default_sleep_time * 3/2
+    lead_mid octave, opts
+    sleep default_sleep_time * 3/2
+    lead_first octave, opts
+    sleep default_sleep_time * 3/2
+    lead_last octave, opts
+    lead_bridge octave, opts
+  end
+end
+
+in_thread(name: :keyboard) do
+  keyboard
+end
+in_thread(name: :drums) do
+  drums
 end
 in_thread(name: :lead_flute) do
-  2.times do
-    sync :start_lead
-    lead 5, flute_settings
-  end
+  lead 5, flute_settings
 end
 in_thread(name: :lead_guitar) do
-  2.times do
-    sync :start_lead
-    lead 4, guitar_settings, :pluck
-  end
+  lead 4, guitar_settings, :pluck
 end
-sync :start_bass_and_drums
-2.times do
-  bass
-end
+bass
